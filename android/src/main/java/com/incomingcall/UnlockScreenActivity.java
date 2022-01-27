@@ -11,8 +11,10 @@ import android.widget.TextView;
 import android.view.View;
 import android.net.Uri;
 import android.os.Vibrator;
+import android.os.VibrationEffect;
 import android.content.Context;
 import android.media.MediaPlayer;
+import android.media.AudioAttributes;
 import android.provider.Settings;
 import java.util.List;
 import java.util.Timer;
@@ -38,14 +40,23 @@ public class UnlockScreenActivity extends AppCompatActivity implements UnlockScr
     private static final String TAG = "MessagingService";
     private TextView tvName;
     private TextView tvInfo;
+    private TextView tvAccept;
+    private TextView tvDecline;
     private ImageView ivAvatar;
+    private ImageView ivAcceptIcon;
+    private ImageView ivRejectIcon;
     private Integer timeout = 0;
     private String uuid = "";
     static boolean active = false;
-    private static Vibrator v = (Vibrator) IncomingCallModule.reactContext.getSystemService(Context.VIBRATOR_SERVICE);
+    public static Vibrator v = (Vibrator) IncomingCallModule.reactContext.getSystemService(Context.VIBRATOR_SERVICE);
     private long[] pattern = {0, 1000, 800};
+
+// Incase of custom Call
+//     private static int ringtone = R.raw.call_ringtone;
+//     public static MediaPlayer player = MediaPlayer.create(IncomingCallModule.reactContext, ringtone);
+
     private static MediaPlayer player = MediaPlayer.create(IncomingCallModule.reactContext, Settings.System.DEFAULT_RINGTONE_URI);
-    private static Activity fa;
+    public static Activity fa;
     private Timer timer;
 
 
@@ -82,6 +93,10 @@ public class UnlockScreenActivity extends AppCompatActivity implements UnlockScr
         tvName = findViewById(R.id.tvName);
         tvInfo = findViewById(R.id.tvInfo);
         ivAvatar = findViewById(R.id.ivAvatar);
+        ivAcceptIcon = findViewById(R.id.ivAcceptCall);
+        tvAccept = findViewById(R.id.tvAccept);
+        ivRejectIcon = findViewById(R.id.ivDeclineCall);
+        tvDecline = findViewById(R.id.tvDecline);
 
         Bundle bundle = getIntent().getExtras();
         if (bundle != null) {
@@ -102,6 +117,26 @@ public class UnlockScreenActivity extends AppCompatActivity implements UnlockScr
                     Picasso.get().load(avatar).transform(new CircleTransform()).into(ivAvatar);
                 }
             }
+            if (bundle.containsKey("accept")) {
+                String accept = bundle.getString("accept");
+                tvAccept.setText(accept);
+            }
+            if (bundle.containsKey("reject")) {
+                String reject = bundle.getString("reject");
+                tvDecline.setText(reject);
+            }
+            if (bundle.containsKey("acceptIcon")) {
+                String acceptIcon = bundle.getString("acceptIcon");
+                if (acceptIcon != null) {
+                    Picasso.get().load(acceptIcon).transform(new CircleTransform()).into(ivAcceptIcon);
+                }
+            }
+            if (bundle.containsKey("rejectIcon")) {
+                String rejectIcon = bundle.getString("rejectIcon");
+                if (rejectIcon != null) {
+                    Picasso.get().load(rejectIcon).transform(new CircleTransform()).into(ivRejectIcon);
+                }
+            }
             if (bundle.containsKey("timeout")) {
                 this.timeout = bundle.getInt("timeout");
             }
@@ -111,8 +146,25 @@ public class UnlockScreenActivity extends AppCompatActivity implements UnlockScr
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN | WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON | WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
                 | WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED | WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD);
 
-        v.vibrate(pattern, 0);
+
+// No Vibration when screen is locked issue resolved
+         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                AudioAttributes audioAttributes = new AudioAttributes.Builder()
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .setUsage(AudioAttributes.USAGE_ALARM)
+                    .build();
+                VibrationEffect ve = VibrationEffect.createWaveform(
+                    pattern,
+                    0
+                );
+                v.vibrate(ve, audioAttributes);
+            } else {
+                v.vibrate(pattern, 0);
+            }
+
         player.start();
+
+//        player.setLooping(true); // Incase of custom player set this to setLooping
 
         AnimateImage acceptCallBtn = findViewById(R.id.ivAcceptCall);
         acceptCallBtn.setOnClickListener(new View.OnClickListener() {
@@ -179,8 +231,8 @@ public class UnlockScreenActivity extends AppCompatActivity implements UnlockScr
             });
           }
         }
-
-        sendEvent("answerCall", params);
+      //sendEvent("answerCall", params); //This was previous eventName
+        sendEvent("callAnswer", params);
         finish();
     }
 
@@ -195,7 +247,8 @@ public class UnlockScreenActivity extends AppCompatActivity implements UnlockScr
             params.putBoolean("isHeadless", true);
         }
 
-        sendEvent("endCall", params);
+    //sendEvent("endCall", params); //This was previous eventName
+        sendEvent("callEnd", params);
 
         finish();
     }
