@@ -59,6 +59,11 @@ public class UnlockScreenActivity extends AppCompatActivity implements UnlockScr
     public static Activity fa;
     private Timer timer;
 
+    static UnlockScreenActivity instance;
+
+    public static UnlockScreenActivity getInstance() {
+        return instance;
+    }
 
     @Override
     public void onStart() {
@@ -74,6 +79,7 @@ public class UnlockScreenActivity extends AppCompatActivity implements UnlockScr
             }, timeout);
         }
         active = true;
+        instance = this;
     }
 
     @Override
